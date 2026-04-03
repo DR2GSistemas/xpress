@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Xpress;
 
 use Psr\Http\Message\ResponseInterface;
+use Xpress\Result\XResult;
+use Xpress\Result\XError;
 
 function xpress(): XRouter
 {
@@ -49,4 +51,19 @@ function badRequest(string $message = 'Bad Request'): ResponseInterface
 function error(string $message = 'Internal Server Error', int $status = 500): ResponseInterface
 {
     return (new XResponse())->error($message, $status);
+}
+
+function result_ok(mixed $value = null): XResult
+{
+    return XResult::ok($value);
+}
+
+function result_fail(string $message, int $code = 500, array $data = []): XResult
+{
+    return XResult::fail($message, $code, $data);
+}
+
+function result_error(XError $error): XResult
+{
+    return XResult::error($error);
 }

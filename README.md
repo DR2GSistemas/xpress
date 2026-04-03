@@ -1137,6 +1137,242 @@ composer test
 ./vendor/bin/phpunit
 ```
 
+## Patrón Result
+
+Xpress incluye un patrón Result para manejar respuestas de forma funcional, inspirado en Rust y Haskell. Permite retornar éxito o error de manera uniforme y encadenable.
+
+### XResult
+
+```php
+use Xpress\Result\XResult;
+use Xpress\Result\XError;
+
+// Retornar éxito
+$result = XResult::ok(['user' => ['id' => 1, 'name' => 'Juan']]);
+
+// Retornar error
+$result = XResult::fail('Usuario no encontrado', 404);
+
+// Con datos adicionales
+$result = XResult::fail('Validación fallida', 422, ['errors' => ['email' => 'inválido']]);
+```
+
+### XError - Helpers de Códigos HTTP
+
+```php
+use Xpress\Result\XError;
+
+XError::badRequest('Datos inválidos');          // 400
+XError::unauthorized('No autenticado');         // 401
+XError::forbidden('Sin permisos');              // 403
+XError::notFound('Recurso no encontrado');     // 404
+XError::conflict('Conflicto de datos');         // 409
+XError::unprocessable('Entidad no procesable'); // 422
+XError::validation(['email' => 'inválido']);     // 422 con errores
+XError::internal('Error interno');              // 500
+```
+
+### Métodos de XResult
+
+```php
+$result = XResult::ok(['data' => 'value']);
+
+// Verificación
+$result->isSuccess();      // true
+$result->isFailure();      // false
+$result->isNotFound();     // false
+$result->isUnauthorized(); // false
+
+// Extracción de valores
+$result->getValue();                // ['data' => 'value']
+$result->getValueOr('default');    // 'default' si es error
+$result->unwrap();                  // Lanza excepción si es error
+$result->unwrapOr('default');       // 'default' si es error
+
+// Manejo de errores
+$result->getError();          // null (éxito) o XError
+$result->getErrorMessage();   // string del error
+$result->getErrorCode();      // código HTTP del error
+$result->getErrorData();      // datos adicionales del error
+
+// Modificación
+$result->withCode(201);       // Cambiar código HTTP a 201
+$result->withHttpCode(203);  // Similar, más semántico
+```
+
+### Encadenamiento Funcional
+
+```php
+$result = XResult::ok(['user_id' => 1])
+    ->andThen(fn($data) => findUserById($data['user_id']))
+    ->andThen(fn($user) => $user->isActive() 
+        ? XResult::ok($user) 
+        : XResult::fail('Usuario inactivo', 403))
+    ->map(fn($user) => $user->toArray());
+
+// map: transforma el valor si es éxito
+// mapError: transforma el error si es fallo
+// andThen: encadena operaciones que retornan Result
+// orElse: maneja errores y puede recuperarlos
+```
+
+### Convertir a Response
+
+```php
+$result = XResult::ok(['user' => $user]);
+
+// Directamente a Response
+$result->toResponse()->send();
+
+// O usando send()
+$result->send();
+
+// Convertir a array
+$result->toArray();
+// [
+//     'success' => true,
+//     'data' => ['user' => ...],
+//     'error' => null
+// ]
+```
+
+### Trait XResultController
+
+Usa el trait en controladores para helpers integrados:
+
+```php
+<?php
+use Xpress\XRequest;
+use Xpress\Result\XResult;
+use Xpress\Result\XResultController;
+
+class UserController
+{
+    use XResultController;
+
+    public function show(XRequest $request, array $params): XResult
+    {
+        return $this->try(function() use ($params) {
+            $id = (int) $params['id'];
+            $user = $this->findUser($id);
+            
+            if (!$user) {
+                return $this->notFound('Usuario no encontrado');
+            }
+            
+            return $this->ok($user->toArray());
+        });
+    }
+
+    public function store(XRequest $request): XResult
+    {
+        return $this->try(function() use ($request) {
+            $data = $request->getJson();
+            
+            $this->validate($data, [
+                'name' => 'required|string|max:255',
+                'email' => 'required|email'
+            ]);
+            
+            return $this->created($this->createUser($data));
+        });
+    }
+}
+```
+
+### Helpers de Result
+
+```php
+// En helpers.php
+result_ok(['data' => 'value']);              // XResult::ok()
+result_fail('Error', 500, ['key' => 'val']); // XResult::fail()
+result_error(XError::notFound());            // XResult::error()
+```
+
+### Ejemplo Completo con Result
+
+```php
+<?php
+use Xpress\XRouter;
+use Xpress\XRequest;
+use Xpress\Result\XResult;
+use Xpress\Result\XResultController;
+
+class ProductController
+{
+    use XResultController;
+
+    #[XRoute('/products', 'GET')]
+    public function index(XRequest $request): XResult
+    {
+        return $this->try(function() use ($request) {
+            $page = (int) $request->getQuery('page', 1);
+            $limit = min(100, (int) $request->getQuery('limit', 10));
+            
+            $products = $this->getProductRepository()->paginate($page, $limit);
+            
+            return $this->ok([
+                'products' => $products['data'],
+                'pagination' => $products['pagination']
+            ]);
+        });
+    }
+
+    #[XRoute('/products/{id}', 'GET')]
+    public function show(XRequest $request, array $params): XResult
+    {
+        return $this->try(function() use ($params) {
+            $product = $this->getProductRepository()->find((int) $params['id']);
+            
+            if (!$product) {
+                return $this->notFound('Producto no encontrado');
+            }
+            
+            return $this->ok($product->toArray());
+        });
+    }
+
+    #[XRoute('/products', 'POST')]
+    public function store(XRequest $request): XResult
+    {
+        return $this->try(function() use ($request) {
+            $data = $request->getJson();
+            
+            $errors = $this->validate($data, [
+                'name' => 'required|string|min:3',
+                'price' => 'required|numeric|min:0'
+            ]);
+            
+            if (!empty($errors)) {
+                return $this->validationError($errors);
+            }
+            
+            $product = $this->createProduct($data);
+            
+            return $this->created($product->toArray());
+        });
+    }
+}
+```
+
+### Compatibilidad hacia atrás
+
+Los controladores pueden retornar `XResponse` directamente si no usan el patrón Result:
+
+```php
+public function index(): XResponse  // XResponse directo
+{
+    return (new XResponse())->json(['data' => []]);
+}
+
+public function show(): XResult  // Con Result pattern
+{
+    return $this->ok(['data' => []]);
+}
+
+// Ambos funcionan en el router
+```
+
 ## Códigos de Estado HTTP
 
 | Código | Nombre | Uso común |
