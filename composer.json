@@ -1,0 +1,48 @@
+{
+    "name": "dr2gsistemas/xpress",
+    "description": "Router REST API ligero para PHP 8.4 con sintaxis estilo Express.js",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "router",
+        "rest",
+        "api",
+        "http",
+        "psr-7",
+        "express",
+        "php8"
+    ],
+    "require": {
+        "php": "^8.4",
+        "psr/http-message": "^2.0",
+        "guzzlehttp/psr7": "^2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Xpress\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Xpress\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "serve": "Xpress\\Cli\\XpressCli::serve",
+        "post-install-cmd": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ]
+    },
+    "bin": [
+        "bin/xpress"
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
