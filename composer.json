@@ -1,9 +1,9 @@
 {
-    "name": "azul/xpress",
+    "name": "dr2gsistemas/xpress",
     "description": "Router REST API ligero para PHP 8.4 con sintaxis estilo Express.js",
     "type": "library",
     "license": "MIT",
-    "homepage": "https://github.com/DR2GSistemas/xpress",
+    "homepage": "https://github.com/dr2gsistemas/xpress",
     "keywords": [
         "router",
         "rest",
