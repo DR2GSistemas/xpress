@@ -221,79 +221,147 @@ HTACCESS;
                 'index.php' => $this->getIndexPhpTemplate(),
             ],
             'src' => [
-                'controllers' => [],
-                'middleware' => [],
+                'Controllers' => [
+                    'HomeController.php' => $this->getHomeControllerTemplate(),
+                ],
+                'Middleware' => [
+                    'CorsMiddleware.php' => $this->getCorsMiddlewareTemplate(),
+                ],
+            ],
+            'routes' => [
+                'web.php' => $this->getRoutesTemplate(),
+            ],
+            'config' => [],
+            'storage' => [
+                'logs' => [],
+                'cache' => [],
             ],
             'bootstrap.php' => $this->getBootstrapTemplate(),
             '.env.example' => $this->getEnvTemplate(),
+            '.env' => $this->getEnvTemplate(),
+            'composer.json' => $this->getComposerJsonTemplate(),
         ];
 
-        $this->info("Inicializando proyecto Xpress...");
+        $this->info("");
+        $this->info("╔══════════════════════════════════════════════════════════╗");
+        $this->info("║          Xpress Framework - Project Initializer          ║");
+        $this->info("╚══════════════════════════════════════════════════════════╝");
+        $this->info("");
+        $this->info("Creating project structure...");
+        $this->info("");
 
-        foreach ($structure as $name => $content) {
-            if (is_array($content) && !str_ends_with($name, '/')) {
-                $path = $this->projectRoot . '/' . $name;
-                if (!is_dir($path)) {
-                    mkdir($path, 0755, true);
-                    $this->info("  ✓ Creado: {$path}");
-                }
-            }
-        }
+        $created = 0;
+        $skipped = 0;
 
         foreach ($structure as $name => $content) {
             if (is_array($content)) {
-                foreach ($content as $file => $data) {
-                    $filePath = $this->projectRoot . '/' . $name . '/' . $file;
-                    
-                    if (is_callable($data)) {
-                        $data = $data();
-                    }
-
-                    if ($data === null || (is_array($data) && count($data) === 0)) {
-                        if (!is_dir(dirname($filePath))) {
-                            mkdir(dirname($filePath), 0755, true);
-                        }
-                        if (!file_exists($filePath)) {
-                            touch($filePath);
-                            $this->info("  ✓ Creado: {$filePath}");
-                        }
-                        continue;
-                    }
-
-                    if (file_exists($filePath) && !$force) {
-                        $this->warn("  ⚠ Omitido: {$filePath} (ya existe)");
-                        continue;
-                    }
-
-                    if (!is_dir(dirname($filePath))) {
-                        mkdir(dirname($filePath), 0755, true);
-                    }
-
-                    if (is_string($data)) {
-                        file_put_contents($filePath, $data);
-                        $this->info("  ✓ Creado: {$filePath}");
-                    }
-                }
+                // It's a directory with children
+                $this->createDirectory($name, $force);
+                $created += $this->createStructure($name, $content, $force, $skipped);
             } elseif (is_string($content)) {
-                $filePath = $this->projectRoot . '/' . $name;
-                if (!file_exists($filePath) || $force) {
-                    file_put_contents($filePath, $content);
-                    $this->info("  ✓ Creado: {$filePath}");
-                } else {
-                    $this->warn("  ⚠ Omitido: {$filePath} (ya existe)");
-                }
+                // It's a file at root level
+                $result = $this->createFile($this->projectRoot . '/' . $name, $content, $force);
+                if ($result === 'created') $created++;
+                elseif ($result === 'skipped') $skipped++;
             }
         }
 
-        $this->success("✓ Proyecto inicializado correctamente!");
         $this->info("");
-        $this->info("Próximos pasos:");
+        $this->success("✓ Project initialized successfully!");
+        $this->info("");
+        $this->info("Created: {$created} files/directories");
+        if ($skipped > 0) {
+            $this->warn("Skipped: {$skipped} (already exist)");
+        }
+        $this->info("");
+        $this->info("Project structure:");
+        $this->info("  ├── public/         # Public web root");
+        $this->info("  ├── src/           # Application source");
+        $this->info("  │   ├── Controllers/");
+        $this->info("  │   └── Middleware/");
+        $this->info("  ├── routes/        # Route definitions");
+        $this->info("  ├── config/        # Configuration files");
+        $this->info("  ├── storage/       # Logs and cache");
+        $this->info("  ├── bootstrap.php  # Application bootstrap");
+        $this->info("  └── .env           # Environment config");
+        $this->info("");
+        $this->info("Next steps:");
         $this->info("  1. cd {$this->projectRoot}");
         $this->info("  2. composer install");
-        $this->info("  3. php xpress serve");
-        $this->info("  4. Abre http://localhost:8080");
+        $this->info("  3. Edit .env with your database credentials");
+        $this->info("  4. php xpress serve");
+        $this->info("  5. Open http://localhost:8080");
+        $this->info("");
+        $this->info("Available routes:");
+        $this->info("  GET /              - Home page");
+        $this->info("  GET /api/health    - Health check");
+        $this->info("  GET /hello/{name}  - Hello world");
 
         return 0;
+    }
+
+    private function createDirectory(string $path, bool $force): void
+    {
+        $fullPath = $this->projectRoot . '/' . $path;
+        if (!is_dir($fullPath)) {
+            mkdir($fullPath, 0755, true);
+            $this->info("  ✓ created: {$path}/");
+        } else {
+            $this->info("  → exists:  {$path}/");
+        }
+    }
+
+    private function createStructure(string $basePath, array $structure, bool $force, int &$skipped): int
+    {
+        $created = 0;
+        foreach ($structure as $name => $content) {
+            $fullPath = $this->projectRoot . '/' . $basePath . '/' . $name;
+            
+            if (is_array($content)) {
+                // It's a subdirectory
+                if (!is_dir($fullPath)) {
+                    mkdir($fullPath, 0755, true);
+                    $this->info("  ✓ created: {$basePath}/{$name}/");
+                }
+                $created += $this->createStructure($basePath . '/' . $name, $content, $force, $skipped);
+            } elseif (is_string($content)) {
+                // It's a file
+                $result = $this->createFile($fullPath, $content, $force);
+                if ($result === 'created') {
+                    $created++;
+                } elseif ($result === 'skipped') {
+                    $skipped++;
+                }
+            } elseif (is_callable($content)) {
+                $data = $content();
+                $result = $this->createFile($fullPath, $data, $force);
+                if ($result === 'created') {
+                    $created++;
+                } elseif ($result === 'skipped') {
+                    $skipped++;
+                }
+            }
+        }
+        return $created;
+    }
+
+    private function createFile(string $filePath, string $content, bool $force): string
+    {
+        $relativePath = str_replace($this->projectRoot . '/', '', $filePath);
+        
+        if (file_exists($filePath) && !$force) {
+            $this->warn("  ⚠ skipped: {$relativePath} (exists)");
+            return 'skipped';
+        }
+
+        $dir = dirname($filePath);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        file_put_contents($filePath, $content);
+        $this->success("  ✓ created: {$relativePath}");
+        return 'created';
     }
 
     private function routeList(array $args): int
@@ -467,6 +535,139 @@ HELP;
     private function error(string $message): void
     {
         echo "\033[0;31mError: {$message}\033[0m\n";
+    }
+
+    private function getHomeControllerTemplate(): string
+    {
+        return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use Xpress\XRequest;
+use Xpress\XResponse;
+use Xpress\Attributes\{XRoute, XGroup};
+
+#[XGroup('/api')]
+class HomeController
+{
+    #[XRoute('/health', 'GET', name: 'health')]
+    public function health(): XResponse
+    {
+        return (new XResponse())->json([
+            'status' => 'healthy',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'version' => '1.0.0'
+        ]);
+    }
+
+    #[XRoute('/hello/{name}', 'GET', name: 'hello')]
+    public function hello(XRequest $request, array $params): XResponse
+    {
+        $name = $params['name'] ?? 'World';
+        return (new XResponse())->json([
+            'message' => "Hello, {$name}!",
+            'time' => date('Y-m-d H:i:s')
+        ]);
+    }
+}
+PHP;
+    }
+
+    private function getCorsMiddlewareTemplate(): string
+    {
+        return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+namespace App\Middleware;
+
+use Xpress\XRequest;
+use Xpress\XResponse;
+
+class CorsMiddleware
+{
+    public function handle(XRequest $request, callable $next): XResponse
+    {
+        if ($request->getMethod() === 'OPTIONS') {
+            return (new XResponse())
+                ->withHeader('Access-Control-Allow-Origin', '*')
+                ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD')
+                ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+                ->withHeader('Access-Control-Max-Age', '86400');
+        }
+
+        $response = $next($request);
+
+        return $response
+            ->withHeader('Access-Control-Allow-Origin', '*')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    }
+}
+PHP;
+    }
+
+    private function getRoutesTemplate(): string
+    {
+        return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+use Xpress\XRouter;
+use Xpress\XRequest;
+use Xpress\XResponse;
+use App\Controllers\HomeController;
+use App\Middleware\CorsMiddleware;
+
+/** @var XRouter $router */
+
+// Global middleware
+$router->use(CorsMiddleware::class);
+
+// Register controllers with attributes
+$router->registerControllers([HomeController::class]);
+
+// Simple routes
+$router->get('/', function (XRequest $req) {
+    return (new XResponse())->json([
+        'framework' => 'Xpress',
+        'version' => '1.0.0',
+        'status' => 'running'
+    ]);
+});
+PHP;
+    }
+
+    private function getComposerJsonTemplate(): string
+    {
+        return <<<'JSON'
+{
+    "name": "myapp/xpress-api",
+    "description": "Xpress REST API",
+    "type": "project",
+    "require": {
+        "php": "^8.4",
+        "dr2gsistemas/xpress": "^1.1"
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "serve": "php -S localhost:8080 -t public"
+    }
+}
+JSON;
     }
 
     private function getIndexPhpTemplate(): string
