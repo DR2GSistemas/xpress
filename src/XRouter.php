@@ -167,7 +167,7 @@ final class XRouter
             'message' => 'The requested resource was not found',
             'path' => $request->getPath(),
             'method' => $request->getMethod()
-        ], 404);
+        ], 404)->toPsrResponse();
     }
 
     public function handleMethodNotAllowed(XRequest $request): ResponseInterface
@@ -177,7 +177,7 @@ final class XRouter
             'message' => 'The requested method is not allowed for this resource',
             'path' => $request->getPath(),
             'method' => $request->getMethod()
-        ], 405);
+        ], 405)->toPsrResponse();
     }
 
     public function handleError(\Throwable $e, XRequest $request): ResponseInterface
@@ -193,7 +193,7 @@ final class XRouter
             'error' => $message,
             'code' => $status,
             'trace' => $this->isDebugMode() ? $e->getTraceAsString() : null
-        ], $status);
+        ], $status)->toPsrResponse();
     }
 
     public function getRoutes(): array
@@ -208,10 +208,7 @@ final class XRouter
 
     private function prefixPath(string $path): string
     {
-        if (empty($this->basePath) || $path === '/') {
-            return $path;
-        }
-        return $this->basePath . '/' . ltrim($path, '/');
+        return '/' . ltrim($path, '/');
     }
 
     private function isDebugMode(): bool

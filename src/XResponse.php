@@ -9,7 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 use GuzzleHttp\Psr7\Utils;
 
-final class XResponse
+final class XResponse implements ResponseInterface
 {
     private Response $response;
 
@@ -196,23 +196,23 @@ final class XResponse
 
         $options = array_merge($defaults, $options);
 
-        $this
+        $response = $this
             ->withHeader('Access-Control-Allow-Origin', $options['origin'])
             ->withHeader('Access-Control-Allow-Methods', $options['methods'])
             ->withHeader('Access-Control-Allow-Headers', $options['headers']);
 
         if ($options['expose_headers']) {
-            $this->withHeader('Access-Control-Expose-Headers', $options['expose_headers']);
+            $response = $response->withHeader('Access-Control-Expose-Headers', $options['expose_headers']);
         }
 
-        $this
+        $response = $response
             ->withHeader('Access-Control-Max-Age', (string) $options['max_age']);
 
         if ($options['credentials']) {
-            $this->withHeader('Access-Control-Allow-Credentials', 'true');
+            $response = $response->withHeader('Access-Control-Allow-Credentials', 'true');
         }
 
-        return $this;
+        return $response;
     }
 
     public function getStatusCode(): int

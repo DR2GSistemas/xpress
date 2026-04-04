@@ -12,7 +12,7 @@ final class XMiddlewareHandler
 
     public function __construct(
         private readonly array $middlewares,
-        private readonly callable $finalHandler
+        private readonly mixed $finalHandler
     ) {}
 
     public function handle(XRequest $request): ResponseInterface
@@ -33,13 +33,9 @@ final class XMiddlewareHandler
 
     private function resolveMiddleware(string|callable|object $middleware): object
     {
-        if (is_object($middleware)) {
-            return $middleware;
-        }
-
         if (is_callable($middleware)) {
             return new class($middleware) {
-                public function __construct(private readonly callable $callback) {}
+                public function __construct(private readonly mixed $callback) {}
 
                 public function handle(XRequest $request, callable $next): ResponseInterface
                 {
@@ -49,6 +45,10 @@ final class XMiddlewareHandler
                         : $next($request);
                 }
             };
+        }
+
+        if (is_object($middleware)) {
+            return $middleware;
         }
 
         if (is_string($middleware) && class_exists($middleware)) {

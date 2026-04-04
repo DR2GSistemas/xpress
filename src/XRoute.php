@@ -14,7 +14,7 @@ final class XRoute
     public function __construct(
         public readonly string $path,
         public readonly array $methods,
-        public readonly callable|string|array $handler,
+        public readonly mixed $handler,
         public readonly ?string $name = null,
         public readonly ?string $summary = null,
         public readonly array $middlewares = []

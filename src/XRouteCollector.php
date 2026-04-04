@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Xpress;
 
+use Xpress\XRoute;
 use Xpress\Attributes\XGroup;
 use Xpress\Attributes\XMiddleware;
-use Xpress\Attributes\XRoute;
+use Xpress\Attributes\XRoute as XRouteAttribute;
 
 final class XRouteCollector
 {
@@ -42,12 +43,12 @@ final class XRouteCollector
             $fullPath = $this->normalizePath($groupPrefix . $routeAttr->path);
 
             $this->routes[] = new XRoute(
-                path: $fullPath,
-                methods: $routeAttr->methods,
-                handler: [$class, $method->getName()],
-                name: $routeAttr->name,
-                summary: $routeAttr->summary,
-                middlewares: $allMiddlewares
+                $fullPath,
+                $routeAttr->methods,
+                [$class, $method->getName()],
+                $routeAttr->name,
+                $routeAttr->summary,
+                $allMiddlewares
             );
         }
     }
@@ -63,12 +64,12 @@ final class XRouteCollector
         $methods = array_map('strtoupper', (array) $method);
 
         $this->routes[] = new XRoute(
-            path: $this->normalizePath($path),
-            methods: $methods,
-            handler: $handler,
-            name: $name,
-            summary: $summary,
-            middlewares: $middlewares
+            $this->normalizePath($path),
+            $methods,
+            $handler,
+            $name,
+            $summary,
+            $middlewares
         );
 
         return $this;
@@ -129,9 +130,9 @@ final class XRouteCollector
         return null;
     }
 
-    private function getRouteAttribute(\ReflectionMethod $method): ?XRoute
+    private function getRouteAttribute(\ReflectionMethod $method): ?XRouteAttribute
     {
-        $attributes = $method->getAttributes(XRoute::class);
+        $attributes = $method->getAttributes(XRouteAttribute::class);
         if (empty($attributes)) {
             return null;
         }
