@@ -20,7 +20,7 @@ Xpress es un router ligero para crear APIs REST con PHP 8.4, inspirado en la sin
 ## Instalación
 
 ```bash
-composer require azul/xpress
+composer require dr2gsistemas/xpress
 ```
 
 ## CLI - Herramienta de Línea de Comandos
@@ -147,7 +147,7 @@ xpress route:list --json
 
 ```bash
 mkdir mi-api && cd mi-api
-composer require azul/xpress
+composer require dr2gsistemas/xpress
 ```
 
 ```
@@ -1130,11 +1130,11 @@ curl "http://localhost:8000/api/users?search=Juan&page=1&limit=5"
 ## Testing
 
 ```bash
-# Ejecutar tests
-composer test
+# Ejecutar tests con Pest (recomendado)
+./vendor/bin/pest
 
-# O directamente con PHPUnit
-./vendor/bin/phpunit
+# O con Composer
+composer test
 ```
 
 ## Patrón Result

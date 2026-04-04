@@ -8,12 +8,13 @@ use Xpress\XRouter;
 use Xpress\XRequest;
 use Xpress\XResponse;
 use Xpress\Attributes\{XRoute, XMiddleware, XGroup};
+use Psr\Http\Message\ResponseInterface;
 
 #[XGroup('/api/v1')]
 class UserController
 {
     #[XRoute('/users', 'GET', name: 'user.index')]
-    public function index(XRequest $request): ResponseInterface
+    public function index(XRequest $request): XResponse
     {
         $users = [
             ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com'],
@@ -27,7 +28,7 @@ class UserController
     }
 
     #[XRoute('/users/{id}', 'GET', name: 'user.show')]
-    public function show(XRequest $request, array $params): ResponseInterface
+    public function show(XRequest $request, array $params): XResponse
     {
         $id = $params['id'];
 
@@ -48,7 +49,7 @@ class UserController
 
     #[XRoute('/users', 'POST', name: 'user.store')]
     #[XMiddleware(AuthMiddleware::class)]
-    public function store(XRequest $request): ResponseInterface
+    public function store(XRequest $request): XResponse
     {
         $data = $request->getJson();
 
@@ -69,7 +70,7 @@ class UserController
 
     #[XRoute('/users/{id}', 'PUT', name: 'user.update')]
     #[XMiddleware([AuthMiddleware::class, RateLimitMiddleware::class])]
-    public function update(XRequest $request, array $params): ResponseInterface
+    public function update(XRequest $request, array $params): XResponse
     {
         $id = $params['id'];
         $data = $request->getJson();
@@ -86,7 +87,7 @@ class UserController
 
     #[XRoute('/users/{id}', 'DELETE', name: 'user.destroy')]
     #[XMiddleware(AuthMiddleware::class)]
-    public function destroy(XRequest $request, array $params): ResponseInterface
+    public function destroy(XRequest $request, array $params): XResponse
     {
         return (new XResponse())->json([
             'message' => 'User deleted successfully'
@@ -98,7 +99,7 @@ class UserController
 class PostController
 {
     #[XRoute('/posts', 'GET', name: 'post.index')]
-    public function index(XRequest $request): ResponseInterface
+    public function index(XRequest $request): XResponse
     {
         return (new XResponse())->json([
             'data' => [
@@ -109,7 +110,7 @@ class PostController
     }
 
     #[XRoute('/posts/{postId}/comments/{commentId}', 'GET', name: 'post.comment')]
-    public function getComment(XRequest $request, array $params): ResponseInterface
+    public function getComment(XRequest $request, array $params): XResponse
     {
         return (new XResponse())->json([
             'data' => [
@@ -123,7 +124,7 @@ class PostController
 
 class AuthMiddleware
 {
-    public function handle(XRequest $request, callable $next): ResponseInterface
+    public function handle(XRequest $request, callable $next): XResponse
     {
         $token = $request->getHeader('Authorization');
 
@@ -148,7 +149,7 @@ class RateLimitMiddleware
 {
     private static array $requests = [];
 
-    public function handle(XRequest $request, callable $next): ResponseInterface
+    public function handle(XRequest $request, callable $next): XResponse
     {
         $ip = $request->getServerParams()['REMOTE_ADDR'] ?? 'unknown';
         $key = $ip . ':' . date('Y-m-d:H:i');
@@ -175,7 +176,7 @@ class RateLimitMiddleware
 
 class CorsMiddleware
 {
-    public function handle(XRequest $request, callable $next): ResponseInterface
+    public function handle(XRequest $request, callable $next): XResponse
     {
         if ($request->getMethod() === 'OPTIONS') {
             return (new XResponse())
