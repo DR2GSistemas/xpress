@@ -14,27 +14,29 @@ final class XResult implements JsonSerializable, Countable, IteratorAggregate
     private mixed $value;
     private ?XError $error;
     private bool $success;
+    private int $httpCode;
 
-    private function __construct(mixed $value, ?XError $error, bool $success)
+    private function __construct(mixed $value, ?XError $error, bool $success, int $httpCode = 200)
     {
         $this->value = $value;
         $this->error = $error;
         $this->success = $success;
+        $this->httpCode = $httpCode;
     }
 
-    public static function ok(mixed $value = null): self
+    public static function ok(mixed $value = null, int $httpCode = 200): self
     {
-        return new self($value, null, true);
+        return new self($value, null, true, $httpCode);
     }
 
     public static function fail(string $message, int $code = 500, array $data = []): self
     {
-        return new self(null, new XError($message, $code, $data), false);
+        return new self(null, new XError($message, $code, $data), false, $code);
     }
 
     public static function error(XError $error): self
     {
-        return new self(null, $error, false);
+        return new self(null, $error, false, $error->getCode());
     }
 
     public static function fromThrowable(\Throwable $e, bool $hideInternal = true): self
@@ -91,20 +93,20 @@ final class XResult implements JsonSerializable, Countable, IteratorAggregate
 
     public function getCode(): int
     {
-        return $this->success ? 200 : ($this->error?->getCode() ?? 500);
+        return $this->httpCode;
     }
 
     public function withCode(int $code): self
     {
         if ($this->isSuccess()) {
-            return self::ok($this->value)->withHttpCode($code);
+            return self::ok($this->value, $code);
         }
-        return new self(null, $this->error?->withCode($code), false);
+        return new self(null, $this->error?->withCode($code), false, $code);
     }
 
     public function withHttpCode(int $code): self
     {
-        return new self($this->value, $this->error?->withCode($code), $this->success);
+        return new self($this->value, $this->error?->withCode($code), $this->success, $code);
     }
 
     public function getMessage(): string
